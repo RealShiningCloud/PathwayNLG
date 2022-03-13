@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <style>
+      body{
+        background-color: deepskyblue;
+      }
+      .paper{
+        border: 1px black;
+        border-width: 10px;
+        border-radius: 10px;
+        width: 100%;
+        height: 100%;
+        margin-top: 100px;
+        background-color: cornsilk;
+        padding: 30px;
+      }
+
+      #pathwayName{
+        margin-top: 50px;
+      }
+
+      h1{
+        cursor: pointer;
+      }
+    </style>
+
+    <title>Reactions</title>
+  </head>
+  <body>
+    <div class = "container-fluid">
+      <div class = "row">
+        
+        <div class = "col-sm-3"></div>
+        <div class = "col-sm-6">
+                <div class = "paper">
+                  <div>
+                    <div class="input-group mb-3">
+                      <input type="text" class="form-control" id = "searchTerm" placeholder="Type your search term and click Go!" aria-label="Pathway Name" aria-describedby="basic-addon2">
+                      <div class="input-group-append">
+                        <button class="btn btn-outline-primary" type="button" onclick = "send_query()">Go!</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h1 id= "pathwayName" onclick = "switchDesc()">Zzz...</h1>
+                    <p id= "pathwayDesc"></p>
+                  </div>
+                  <div id = "reactions">
+                    <!--<div class = "reaction" data-id = "1"><h4 data-id = "1">Reaction Name</h4><p data-id = "1">its description</p></div>-->
+                  </div>
+                </div>
+                
+        </div>
+        <div class = "col-sm-3"></div>
+
+      </div>
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="/eel.js"></script>
+
+    <script type="text/javascript">
+
+      reactionTemp = '<div class = "reaction" data-id = "%ID%"><h4 class = "reactionHeader" id = "reactionHeader%ID%" data-id = "%ID%"></h4><p class = "reactionText" data-id = "%ID%">%Description%</p></div>'
+
+    </script>
+    <script type="text/javascript">
+
+      function send_query(){
+         $('#pathwayDesc').hide()
+        var searchTerm = $('#searchTerm').val()
+        $('#pathwayName').html(":D")
+        $('#reactions').html("")
+        eel.generate_text_id(searchTerm)(function (listNames){
+          for (var i = 0; i < listNames.length; i++) {
+
+            $('#reactions').html($('#reactions').html() + reactionTemp.replaceAll("%ID%", i).replaceAll("%Description%", listNames[i]))
+          }
+        })
+
+        eel.get_reaction_names()(function (listNames){
+          for (var i = 0; i < listNames.length; i++) {
+            $('#reactionHeader'+i).html(listNames[i])
+          }
+        })
+
+        eel.get_title()(function (listTitle){
+          $('#pathwayName').html(listTitle[0])
+          $('#pathwayDesc').html(listTitle[1])
+        })
+      }
+
+      function switchDesc(){
+        $('#pathwayDesc').toggle()
+      }
+    </script>
+  </body>
+</html>
