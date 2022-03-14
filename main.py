@@ -28,8 +28,6 @@ lexicon = Lexicon.getDefaultLexicon()
 nlgFactory = NLGFactory(lexicon)
 realiser = Realiser(lexicon)
 
-
-
 ##### Editable Variables #####
 
 # list of reactions / id:
@@ -91,12 +89,6 @@ def extract_id_from_search(id_info_text, keyword):
     return id
 
 
-
-##### Query Reactome API -> return Reaction ID# from Keyword #####
-
-id = 1640170
-
-
 ### UX functions
 @eel.expose
 def generate_text_id(id):
@@ -124,8 +116,9 @@ def generate_text_id(id):
         reactant_list =row['reactants']
         product_list =row['products']
         enzyme_name = row['enzyme']
+        reaction_buzzword = row['buzzwords']
 
-        pathway_dict[row['biochemicalReactionDispName']] = create_descriptions(reaction_name, reaction_type, cellular_loc, reactant_list, product_list, enzyme_name)
+        pathway_dict[row['biochemicalReactionDispName']] = create_descriptions(reaction_name, reaction_type, cellular_loc, reactant_list, product_list, enzyme_name, reaction_buzzword)
         listNames = list(pathway_dict.keys())
         listTexts = list(pathway_dict.values())
     print("Done.")
@@ -177,7 +170,6 @@ model = pybiopax.model_from_owl_file("biopax.owl")
 assert isinstance(model.objects, dict)
 assert all(isinstance(obj, pybiopax.biopax.BioPaxObject)
            for obj in model.objects.values())
-
 pathway_name = model.objects['Pathway1'].display_name
 pathway_descrip = model.objects['Pathway1'].comment[0]
 '''
@@ -205,12 +197,17 @@ def get_instances_list(model, instanceStr):
     return all_reactions
 
 
-def find_catalysis(reaction):
-    all_cat = list()
-    for cat in catalysis:
-        if cat.controlled == reaction:
-            all_cat.append(cat)
-    return all_cat
+def find_catalysis_control(reaction):
+  # search through Catalysis first for enzymes/facilitators. If nothing is found, also search through Control for facilitators.
+  all_cat = list()
+  for cat in catalysis:
+    if cat.controlled == reaction:
+      all_cat.append(cat)
+  if len(all_cat) == 0:
+    for con in control:
+      if con.controlled == reaction:
+        all_cat.append(con)
+  return all_cat
 
 
 def get_protein(cat, model=model):
@@ -220,10 +217,8 @@ def get_protein(cat, model=model):
 def get_loc(prot, model=model):
     return prot.cellular_location
 
-
 def get_prot_name(prot, model=model):
     return prot.display_name
-
 
 ##### END pybiopax Helper Functions #####
 def get_all_data(model):
@@ -235,100 +230,201 @@ def get_all_data(model):
     control = get_instances_list(model, 'control')
     return True
 
-
-#### Parse and Determine Type #####
-
 def determine_event_type(reaction):
-    ## parses reaction.display_name AND reaction.comment string for keywords to determine event type.
-    ## assigns reaction 3 scores. whichever category of score is the highest, reaction gets assigned that type.
+  ## parses reaction.display_name AND reaction.comment string for keywords to determine event type.
+  ## assigns reaction 3 scores. whichever category of score is the highest, reaction gets assigned that type.
+  ## also returns a list of "buzzwords" to be used in NLG paragraph
 
-    # 1. metabolic = catabolism AND anabolism (creation/production AND destruction of reactions & products)
-    metabolic_symbols = ['=>', "<=>", "<=", "+"]
-    metabolic_keywords = ["catalysis", "catalyzes", "catalyze", "catalyzing",
-                          "catalyses", "catalyse", "catalysing",
-                          "synthesis", "synthesizes", "synthesize", "synthesizing", "biosynthesis", "intermediate",
-                          "intermediates",
-                          "conversion", "converts", "convert", "converting", "interconversion", "intraconversion",
-                          "formation", "forms", "form", "forming", "generation", "generates", "generate", "generating",
-                          "production", "produces", "produce", "producing",
-                          "hydrolysis", "hydrolysed", "hydrolyses", "isomerises", "isomerisation",
-                          "oxidate", "oxidates", "oxidation", "oxidizing", "oxidatively", "reduce", "reduces",
-                          "reduction", "reducing", "reductively",
-                          "cleavage", "cleaves", "cleave", "cleaving",
-                          "catabolic", "catabolism", "anabolic", "anabolism"]
+  # 1. metabolic = catabolism AND anabolism (creation/production AND destruction of reactions & products)
+  metabolic_symbols = ['=>', "<=>", "<=","+"]
+  metabolic_keywords = ['anabolic', 'anabolism', 'biosynthesis', 'catabolic', 'catabolism', 
+                          'catalyse', 'catalysed', 'catalyses', 'catalysing', 'catalysis', 
+                          'catalyze', 'catalyzed', 'catalyzes', 'catalyzing', 'cleavage', 
+                          'cleave', 'cleaved', 'cleaves', 'cleaving', 'conversion', 
+                          'convert', 'converted', 'converting', 'converts', 'dehydrogenation', 'dehydrogenates',
+                          'enzymatically', 'enzyme', 'enzymes', 'form', 'formation', 
+                          'formed', 'forming', 'forms', 'generate', 'generated', 'generates', 
+                          'generating', 'generation', 'hydrolyse', 'hydrolysed', 'hydrolyses', 'hydrolysing',
+                          'hydrolysis', 'hydrolyze', 'hydrolyzed', 'hydrolyzes', 'hydrolyzing', 
+                          'interconversion', 'intermediate', 'intermediates', 'intraconversion', 
+                          'isomerisation', 'isomerises', 'metabolic', 'metabolism', 'oxidate', 
+                          'oxidated', 'oxidates', 'oxidation', 'oxidating', 'oxidatively', 'oxidize', 'oxidizes', 'oxidized', 'oxidizing', 
+                          'produce', 'produced', 'produces', 'producing', 'production', 'react', 'reacted', 
+                          'reacting', 'reaction', 'reactions', 'reacts', 'reduce', 'reduces', 'reduced',
+                          'reducing', 'reduction', 'reductively', 'synthesis', 'synthesize', 
+                          'synthesized', 'synthesizes', 'synthesizing', 'yield', 'yielded', 'yielding', 'yields']
 
-    # 2. signaling = activation AND deactivation. also includes regulation/regulatory events. a shift from one state to another.
-    signaling_keywords = ["signal", "signaling", "signals", "signaled", "ligand", "ligands",
-                          "receptor", "receptors", "receive", "receives", "received", "receiving",
-                          "regulatory", "regulator", "regulates", "regulate", "regulating", "regulated",
-                          "bind", "binds", "binding", "bound", "conform", "conforms", "conformation", "conforming",
-                          "dissociate", "dissociates", "dissociation", "associate", "associates", "association",
-                          "inactive", "active", "inhibit", "inhibits", "inhibiting", "inhibitor", "inhibitory",
-                          "activate", "activates", "activating", "activator",
-                          "inactivation", "activation", "repression", "represses", "repressed", "repressing",
-                          "control", "controls", "controlled", "controlling", "controller",
-                          "agonist", "antagonist", "interact", "interacts", "interaction", "interactor", "interactors",
-                          "phosphorylation", "phosphorylate", "phosphorylates", "phosphorylating", "phosphorylated",
-                          "dephosphorylation", "dephosphorylate", "dephosphorylates", "dephosphorylating",
-                          "dephosphorylated",
-                          "glycosylation", "glycosylated", "glycosylate", "glycolsylates",
-                          "expression", "expressed", "expressing", "transcription", "translation", "translated",
-                          "transcribed",
-                          "assembly", "assembled", "assembles", "degradation", "degraded", "degrading", "degrades",
-                          "ubiquitination", "ubiquitinated", "ubiquitinates", "ubiquitinate", "ubiquitinating"]
+  metabolic_buzzwords = {
+      'anabolism': ['anabolic', 'anabolism'],
+      'biosynthesis': ['biosynthesis'],
+      'catabolism': ['catabolic', 'catabolism'],
+      'catalysis': ['catalyse', 'catalysed', 'catalyses', 'catalysing', 'catalysis', 'catalyze', 'catalyzed', 'catalyzes', 'catalyzing'],
+      'cleavage': ['cleavage', 'cleave', 'cleaved', 'cleaves', 'cleaving'],
+      'conversion': ['conversion', 'convert', 'converted', 'converting', 'converts'],
+      'dehydrogenation': ['dehydrogenation', 'dehydrogenates'],
+      'formation': ['form', 'formation', 'formed', 'forming', 'forms'],
+      'generation': ['generate', 'generated', 'generates', 'generating', 'generation'],
+      'hydrolysis': ['hydrolyse', 'hydrolysed', 'hydrolyses', 'hydrolysing', 'hydrolysis', 'hydrolyze', 'hydrolyzed', 'hydrolyzes', 'hydrolyzing'],
+      'interconversion': ['interconversion'],
+      'intraconversion': ['intraconversion'],
+      'isomerisation': ['isomerisation', 'isomerises'],
+      'metabolism': ['metabolic', 'metabolism'],
+      'oxidation': ['oxidate', 'oxidated', 'oxidates', 'oxidation', 'oxidating', 'oxidatively', 'oxidize', 'oxidizes', 'oxidized', 'oxidizing'],
+      'production': ['produce', 'produced', 'produces', 'producing', 'production'],
+      'reduction': ['reduce', 'reduces', 'reduced', 'reducing', 'reduction', 'reductively'],
+      'synthesis': ['synthesis', 'synthesize', 'synthesized', 'synthesizes', 'synthesizing']
+  }
 
-    # 3. transport = movement of something from one place to another
-    transport_keywords = ["transport", "transports", "transportation", "transported", "transporting",
-                          "translocate", "translocates", "translocation", "translocated", "translocating",
-                          "export", "import", "exported", "imported", "exports", "imports", "leaves", "enters",
-                          "localization", "localize", "localizes", "localizes",
-                          "exocytosis", "endocytosis", "exocytosed", "endocytosed",
-                          "traffic", "traffics", "trafficked", "trafficking",
-                          "secretion", "secreted", "secretes", "secrete", "secretory",
-                          "internalization", "internalized", "internalize", "internalizes"]
+  # 2. signaling = activation AND deactivation. also includes regulation/regulatory events. a shift from one state to another.
+  signaling_keywords = ['activate', 'activated', 'activates', 'activating', 'activation', 'activator', 
+                          'activators', 'active', 'activities', 'activity', 'agonist', 'agonists', 
+                          'antagonist', 'antagonists', 'assemble', 'assembled', 'assembles', 'assembling', 
+                          'assembly', 'associate', 'associated', 'associates', 'associating', 'association', 
+                          'bind', 'binding', 'binds', 'bound', 'cascade', 'cascades', 'cascading', 'conform', 
+                          'conformation', 'conforming', 'conforms', 'control', 'controlled', 'controller', 
+                          'controlling', 'controls', 'de-phosphorylate', 'de-phosphorylated', 'de-phosphorylates', 
+                          'de-phosphorylating', 'de-phosphorylation', 'deactivate', 'deactivated', 'deactivates', 
+                          'deactivating', 'deactivation', 'degradation', 'degrade', 'degraded', 'degrades', 'degrading', 
+                          'dephosphorylate', 'dephosphorylated', 'dephosphorylates', 'dephosphorylating', 'dephosphorylation', 
+                          'dissociate', 'dissociated', 'dissociates', 'dissociating', 'dissociation', 'downstream', 
+                          'express', 'expressed', 'expresses', 'expressing', 'expression', 'glycosylate', 'glycosylated', 
+                          'glycosylates', 'glycosylating', 'glycosylation', 'inactivate', 'inactivated', 'inactivates', 
+                          'inactivating', 'inactivation', 'inactive', 'inhibit', 'inhibited', 'inhibiting', 'inhibition', 
+                          'inhibitor', 'inhibitors', 'inhibitory', 'inhibits', 'initiate', 'initiated', 'initiates', 'initiating', 
+                          'initiation', 'initiator', 'initiators', 'interact', 'interacting', 'interaction', 'interactor', 
+                          'interactors', 'interacts', 'ligand', 'ligands', 'mediate', 'mediated', 'mediates', 'mediating', 
+                          'mediation', 'modification', 'modifications', 'modified', 'modifies', 'modify', 'modifying', 'phosphorylate', 
+                          'phosphorylated', 'phosphorylates', 'phosphorylating', 'phosphorylation', 'receive', 'received', 'receives', 
+                          'receiving', 'receptor', 'receptors', 'regulate', 'regulated', 'regulates', 'regulating', 'regulation', 
+                          'regulator', 'regulatory', 'repress', 'repressed', 'represses', 'repressing', 'repression', 'signal', 'signaled', 
+                          'signaling', 'signalled', 'signalling', 'signals', 'stimulate', 'stimulated', 'stimulates', 'stimulating', 
+                          'stimulation', 'transcribe', 'transcribed', 'transcribes', 'transcribing', 'transcription', 'translate', 
+                          'translated', 'translates', 'translating', 'translation', 'trigger', 'triggered', 'triggering', 'triggers', 
+                          'ubiquitin', 'ubiquitinate', 'ubiquitinated', 'ubiquitinates', 'ubiquitinating', 'ubiquitination', 'upstream',
+                          'deubiquitination', 'deubiquitinate', 'deubiquitinates', 'deubiquitinated', 'deubiquitinating']
 
-    # 4. miscellaneous event --> assign as signaling to be safe
+  signaling_buzzwords = {
+      'activation': ['activate', 'activated', 'activates', 'activating', 'activation', 'activator', 'activators', 
+                      'active', 'activities', 'activity', 'agonist', 'agonists',
+                      'initiate', 'initiated', 'initiates', 'initiating', 'initiation', 'initiator', 'initiators',
+                      'stimulate', 'stimulated', 'stimulates', 'stimulating', 'stimulation'],
+      'assembly': ['assemble', 'assembled', 'assembles', 'assembling', 'assembly'],
+      'association': ['associate', 'associated', 'associates', 'associating', 'association'],
+      'binding': ['bind', 'binding', 'binds', 'bound', 'ligand', 'ligands',
+                  'receive', 'received', 'receives', 'receiving', 'receptor', 'receptors'],
+      'signalling cascade': ['cascade', 'cascades', 'cascading','trigger', 'triggered', 'triggering', 'triggers'],
+      'degradation': ['degradation', 'degrade', 'degraded', 'degrades', 'degrading'],
+      'dephosphorylation': ['de-phosphorylate', 'de-phosphorylated', 'de-phosphorylates', 'de-phosphorylating', 'de-phosphorylation',
+                              'dephosphorylate', 'dephosphorylated', 'dephosphorylates', 'dephosphorylating', 'dephosphorylation'],
+      'dissociation': ['dissociate', 'dissociated', 'dissociates', 'dissociating', 'dissociation'],
+      'inhibition': ['antagonist', 'antagonists', 'deactivate', 'deactivated', 'deactivates', 'deactivating', 'deactivation',
+                          'inactivate', 'inactivated', 'inactivates', 'inactivating', 'inactivation', 'inactive', 'inhibit', 'inhibited', 'inhibiting', 'inhibition', 
+                          'inhibitor', 'inhibitors', 'inhibitory', 'inhibits'],
+      'gene expression': ['express', 'expressed', 'expresses', 'expressing', 'expression', 'transcribe', 'transcribed', 'transcribes', 'transcribing', 'transcription', 'translate', 
+                          'translated', 'translates', 'translating', 'translation'],
+      'gene repression': ['repress', 'repressed', 'represses', 'repressing', 'repression'],
+      'glycosylation': ['glycosylate', 'glycosylated', 'glycosylates', 'glycosylating', 'glycosylation'],
+      'modification': ['modification', 'modifications', 'modified', 'modifies', 'modify', 'modifying'],
+      'phosphorylation': ['phosphorylate', 'phosphorylated', 'phosphorylates', 'phosphorylating', 'phosphorylation'],
+      'regulation': ['control', 'controlled', 'controller', 'controlling', 'controls', 'downstream', 'mediate', 'mediated', 'mediates', 'mediating', 'mediation',
+                      'regulate', 'regulated', 'regulates', 'regulating', 'regulation', 'regulator', 'regulatory', 'upstream'],
+      'ubiquitination': ['ubiquitin', 'ubiquitinate', 'ubiquitinated', 'ubiquitinates', 'ubiquitinating', 'ubiquitination'],
+      'deubiquitination': ['deubiquitination', 'deubiquitinate', 'deubiquitinates', 'deubiquitinated', 'deubiquitinating']
+  }
 
-    score_metabolic = 0
-    score_signaling = 0
-    score_transport = 0
+  # 3. transport = movement of something from one place to another
+  transport_keywords = ['endocytose', 'endocytosed', 'endocytoses', 'endocytosing', 'endocytosis', 
+                          'enter', 'entered', 'entering', 'enters', 'exit', 'exited', 'exiting', 'exits', 
+                          'exocytose', 'exocytosed', 'exocytoses', 'exocytosing', 'exocytosis', 'export', 
+                          'exported', 'exporting', 'exports', 'externalisation', 'externalise', 'externalised', 
+                          'externalises', 'externalising', 'externalization', 'externalize', 'externalized', 
+                          'externalizes', 'externalizing', 'import', 'imported', 'importing', 'imports', 'internalisation', 
+                          'internalise', 'internalised', 'internalises', 'internalising', 'internalization', 'internalize', 
+                          'internalized', 'internalizes', 'internalizing', 'leave', 'leaves', 'leaving', 'localization', 
+                          'localize', 'localized', 'localizes', 'localizing', 'secrete', 'secreted', 'secretes', 
+                          'secreting', 'secretion', 'secretory', 'traffic', 'trafficked', 'trafficking', 'traffics', 
+                          'translocate', 'translocated', 'translocates', 'translocating', 'translocation', 
+                          'transport', 'transportation', 'transported', 'transporting', 'transports']
 
-    for r in reaction.display_name.lower().split():
-        if r in metabolic_symbols:
-            score_metabolic += 2
-        if r in metabolic_keywords:
-            score_metabolic += 3
-        if r in signaling_keywords:
-            score_signaling += 4
-        if r in transport_keywords:
-            score_transport += 5
+  transport_buzzwords = {
+      'endocytosis': ['endocytose', 'endocytosed', 'endocytoses', 'endocytosing', 'endocytosis'],
+      'exocytosis': ['exocytose', 'exocytosed', 'exocytoses', 'exocytosing', 'exocytosis'],
+      'export': ['export', 'exported', 'exporting', 'exports'],
+      'externalization': ['externalisation', 'externalise', 'externalised', 'externalises', 'externalising', 'externalization', 'externalize', 'externalized', 'externalizes', 'externalizing'],
+      'import': ['import', 'imported', 'importing', 'imports'],
+      'internalization': ['internalisation', 'internalise', 'internalised', 'internalises', 'internalising', 'internalization', 'internalize', 'internalized', 'internalizes', 'internalizing'],
+      'localization': ['localization', 'localize', 'localized', 'localizes', 'localizing'],
+      'secretion': ['secrete', 'secreted', 'secretes', 'secreting', 'secretion', 'secretory'],
+      'translocation': ['translocate', 'translocated', 'translocates', 'translocating', 'translocation']
+  }
+  
+  # 4. miscellaneous event --> assign as signaling to be safe
 
-    for w in reaction.comment[0].lower().split():
-        if r in metabolic_symbols:
-            score_metabolic += 1
-        if r in metabolic_keywords:
-            score_metabolic += 2
-        if r in signaling_keywords:
-            score_signaling += 2
-        if r in transport_keywords:
-            score_transport += 3
+  def get_buzz(word, buzzwords_dict):
+    buzz = "NONE"
+    for k in buzzwords_dict:
+        for i in range(len(buzzwords_dict[k])):
+            if buzzwords_dict[k][i] == word:
+                buzz = k
+    return buzz
 
-    met = ("metabolic", score_metabolic)
-    sig = ("signaling", score_signaling)
-    tran = ("transport", score_transport)
+  # actual score tallying
+  score_metabolic = 0
+  score_signaling = 0
+  score_transport = 0
 
-    if met[1] == sig[1] == tran[1] == 0:
-        type = sig[0]
+  for r in reaction.display_name.lower().split():
+      if r in metabolic_symbols:
+          score_metabolic += 2
+      if r in metabolic_keywords:
+          score_metabolic += 3
+      if r in signaling_keywords:
+          score_signaling += 4
+      if r in transport_keywords:
+          score_transport += 5
+
+  for w in reaction.comment[0].lower().split():
+      if w in metabolic_symbols:
+          score_metabolic += 1
+      if w in metabolic_keywords:
+          score_metabolic += 2
+      if w in signaling_keywords:
+          score_signaling += 2
+      if w in transport_keywords:
+          score_transport += 3
+
+  met = ("metabolic", score_metabolic, metabolic_buzzwords)
+  sig = ("signaling", score_signaling, signaling_buzzwords)
+  tran = ("transport", score_transport, transport_buzzwords)
+
+  if met[1] == sig[1] == tran[1] == 0:
+    type = sig[0]
+    buzz_dict = sig[2]
+  else:
+    winner = max(met[1],sig[1],tran[1])
+    if winner is met[1]:
+      type = met[0]
+      buzz_dict = met[2]
+    elif winner is tran[1]:
+      type = tran[0]
+      buzz_dict = tran[2]
     else:
-        winner = max(met[1], sig[1], tran[1])
-        if winner is met[1]:
-            type = met[0]
-        elif winner is tran[1]:
-            type = tran[0]
-        else:
-            type = sig[0]
+      type = sig[0]
+      buzz_dict = sig[2]
 
-    return type
+  # accumulates list of buzzwords to be returned
+  buzzwords = []
+
+  for r in reaction.display_name.lower().split():
+    buzz = get_buzz(r, buzz_dict)
+    if buzz != "NONE" and buzz not in buzzwords:
+      buzzwords.append(buzz)
+  for w in reaction.comment[0].lower().split():
+    buzz = get_buzz(w, buzz_dict)
+    if buzz != "NONE" and buzz not in buzzwords:
+      buzzwords.append(buzz)
+
+  return (type, buzzwords)
 
 
 ### Generate Data Frame based on pybiopax model
@@ -338,14 +434,14 @@ def generate_df(model):
     catalysis = get_instances_list(model, 'catalysis')
     control = get_instances_list(model, 'control')
     df = pd.DataFrame(
-        columns=["biochemicalReactionDispName", "reactionType", "cellularLoc", "reactants", "products", "enzyme"])
+        columns=["biochemicalReactionDispName", "reactionType", "cellularLoc", "reactants", "products", "enzyme","buzzwords"])
 
     if len(reactions) == 0:
         print("no reactions")
         return df
 
     for reaction in reactions:
-        cats = find_catalysis(reaction)
+        cats = find_catalysis_control(reaction)
         listEnzymes = list()
         listEnzymeNames = list()
         listEnzymeLoc = list()
@@ -373,7 +469,7 @@ def generate_df(model):
                 listRight.append(reaction.right[j].name[0])
 
         # parse reaction name / display name to determine event type
-        reaction_Type = determine_event_type(reaction)
+        (reaction_Type, reaction_Buzz) = determine_event_type(reaction)
 
         dic = {
             "biochemicalReactionDispName": reaction.display_name,
@@ -382,6 +478,7 @@ def generate_df(model):
             "reactants": listLeft,
             "products": listRight,
             "enzyme": listEnzymeNames,
+            "buzzwords": reaction_Buzz
         }
         df.loc[len(df.index)] = dic
     return df
@@ -391,13 +488,6 @@ def generate_df(model):
 
 
 ##### Natural Language Generation #####
-
-# hi I can't get the newline character to work properly someone please help
-# I also don't know if this function is necessary
-def create_introduction(pathwayName, pathwayDescrip):
-    title = "Pathway: " + pathwayName + '\n' + "Description: " + pathwayDescrip
-    return title
-
 
 def gen_sentence_list(entity_list):
     if len(entity_list) == 1:
@@ -412,7 +502,7 @@ def gen_sentence_list(entity_list):
     return gen_str
 
 
-def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, product_list, enzyme):
+def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, product_list, enzyme, buzzwords):
     para = "Name: " + reaction_name
 
     # sentence 1
