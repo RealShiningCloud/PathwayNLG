@@ -51,6 +51,8 @@ keyword = "Glycolysis"
 # keyword = "Cell Cycle"
 
 def parse_keyword(keyword):
+
+    # print("keyword is ", keyword)
     for i in range(len(keyword.split())):
         if i == 0:
             str_key = keyword.split()[i]
@@ -58,12 +60,15 @@ def parse_keyword(keyword):
             str_key = str_key + "%20" + keyword.split()[i]
     return str_key
 
-
 # this block of code helps us to get the ID for the keyword entered
 def get_id_pathcommons(keyword):
-  #print(f'https://reactome.org/ReactomeRESTfulAPI/RESTfulWS/biopaxExporter/Level3/{Id}')
+    #print(f'https://reactome.org/ReactomeRESTfulAPI/RESTfulWS/biopaxExporter/Level3/{Id}')
     # res = requests.get('http://www.pathwaycommons.org/pc2/search.json?q='+keyword+'&datasource=reactome')
-    res = requests.get('http://www.pathwaycommons.org/pc2/search.json?q='+parse_keyword(keyword)+'&datasource=reactome')
+    keyword_changed = keyword.title()
+    #print(parse_keyword(keyword_changed))
+    url = 'http://www.pathwaycommons.org/pc2/search.json?q='+parse_keyword(keyword_changed)+'&datasource=reactome'
+    print(url)
+    res = requests.get(url)
     # print(res.text)
     if res.ok:
         return res.text
@@ -94,11 +99,12 @@ names = dict()
 ### UX functions
 @eel.expose
 def extract_id_from_search2(keyword):
-    id_info_text = get_id_pathcommons(keyword)
+
     global names
     names = dict()
+    id_info_text = get_id_pathcommons(keyword)
     for i in range(len(json.loads(id_info_text)["searchHit"])):
-        if keyword in str(json.loads(id_info_text)["searchHit"][i]['name']):
+        if keyword.lower() in str(json.loads(id_info_text)["searchHit"][i]['name']).lower():
             print(str(json.loads(id_info_text)["searchHit"][i]['name']))
             id_url = json.loads(id_info_text)["searchHit"][i]['uri']
             names[str(json.loads(id_info_text)["searchHit"][i]['name'])] = id_url
@@ -596,7 +602,6 @@ def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, p
         para = para + '\n' + realiser.realiseSentence(sentence1)
 
     if len(enzyme) == 0:
-        print('here')
         last_sentence = "It's not catalyzed by any enzyme."
         para = para + ' ' + last_sentence
     else:
