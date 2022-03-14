@@ -87,9 +87,24 @@ def extract_id_from_search(id_info_text, keyword):
             num = num + c
     id = int(num)
     return id
+names = dict()
+
 
 
 ### UX functions
+@eel.expose
+def extract_id_from_search2(keyword):
+    id_info_text = get_id_pathcommons(keyword)
+    global names
+    names = dict()
+    for i in range(len(json.loads(id_info_text)["searchHit"])):
+        if keyword in str(json.loads(id_info_text)["searchHit"][i]['name']):
+            print(str(json.loads(id_info_text)["searchHit"][i]['name']))
+            id_url = json.loads(id_info_text)["searchHit"][i]['uri']
+            names[str(json.loads(id_info_text)["searchHit"][i]['name'])] = id_url
+
+    return list(names.keys())
+
 @eel.expose
 def generate_text_id(id):
     print(f"working on query with id {id}")
@@ -451,7 +466,8 @@ def generate_df(model):
         if len(listEnzymes) > 0:
             for enz in listEnzymes:
                 listEnzymeNames.append(get_prot_name(enz))
-                listEnzymeLoc.append(get_loc(enz).term[0])
+                if get_loc(enz).term[0] not in listEnzymeLoc:
+                    listEnzymeLoc.append(get_loc(enz).term[0])
 
         # get full names of left and right (reactants & products) as a list of string
         listLeft = list()
@@ -503,7 +519,7 @@ def gen_sentence_list(entity_list):
 
 
 def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, product_list, enzyme, buzzwords):
-    para = "Name: " + reaction_name
+    para = ''
 
     # sentence 1
     sentence1 = nlgFactory.createClause()
