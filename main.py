@@ -21,6 +21,7 @@ from simplenlg.lexicon import *
 from simplenlg.realiser.english import *
 from simplenlg.phrasespec import *
 from simplenlg.features import *
+import random
 
 import eel
 
@@ -538,9 +539,13 @@ def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, p
         reac_proc_part1.addPostModifier(gen_sentence_list(reactant_list))
         reac_proc_part2 = nlgFactory.createNounPhrase("the products")
         reac_proc_part2.addPostModifier(gen_sentence_list(product_list))
+
     elif reaction_type == "transport":
         reaction_type_noun = nlgFactory.createNounPhrase("a transport event")
-        reac_procduct_verb = nlgFactory.createVerbPhrase("involves")
+
+        sub_for_involve = ["involves", "consists of", "includes"]
+        reac_procduct_verb = nlgFactory.createVerbPhrase(random.choice(sub_for_involve))
+
         reac_proc_part1 = nlgFactory.createNounPhrase("the transport of")
         if reactant_list == product_list:
             reac_proc_part1.addPostModifier(gen_sentence_list(reactant_list))
@@ -549,7 +554,11 @@ def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, p
                 gen_sentence_list(reactant_list) + ", and also " + gen_sentence_list(product_list))
     else:
         reaction_type_noun = nlgFactory.createNounPhrase("an event")
-        reac_procduct_verb = nlgFactory.createVerbPhrase("involves")
+        # reac_procduct_verb = nlgFactory.createVerbPhrase("involves")
+
+        sub_for_involve = ["involves", "consists of", "includes"]
+        reac_procduct_verb = nlgFactory.createVerbPhrase(random.choice(sub_for_involve))
+
         reac_proc_part1 = nlgFactory.createNounPhrase(gen_sentence_list(reactant_list))
         reac_proc_part1.addPreModifier("the entities")
         reac_proc_part1.addPostModifier("in its initial state")
@@ -558,8 +567,9 @@ def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, p
         reac_proc_part2.addComplement("in its secondary state")
 
     reaction_type_noun.addPostModifier("that")
-    cellloc_verb = nlgFactory.createVerbPhrase("takes")
-    cellloc_verb.addPostModifier('place in')
+    sub_place_in = ["happens in", "takes place in", "occurs in"]
+    cellloc_verb = nlgFactory.createVerbPhrase(random.choice(sub_place_in))
+    # cellloc_verb.addPostModifier('place in')
 
     if len(cell_loc) != 0:
         cellloc_clause = nlgFactory.createClause()
