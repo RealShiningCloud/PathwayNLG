@@ -1,6 +1,9 @@
 # PathwayNLG
 A natural language generator for Biopax pathways
 
+
+![PathwayNLG DEMO](https://github.com/RealShiningCloud/PathwayNLG/blob/main/PathwayNLG_demo.png)
+
 # python package dependencies
 pip install eel  
 pip install pybiopax  
@@ -17,4 +20,3 @@ keyword = "Signaling by Insulin receptor"
 keyword = "Cell Cycle"
 
 
-![alt text](https://github.com/RealShiningCloud/PathwayNLG/blob/main/PathwayNLG_demo.png)
