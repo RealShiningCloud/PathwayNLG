@@ -45,6 +45,52 @@ Id_dna = 69306  # dna replication (challenge)
 Id_cell = 1640170  # cell cycle (challenge)
 model = ""
 
+
+## user can enter keyword
+keyword = "Glycolysis"
+# keyword = "Citric acid cycle (TCA cycle)"
+# keyword = "Signaling by Insulin receptor"
+# keyword = "Cell Cycle"
+
+def parse_keyword(keyword):
+    for i in range(len(keyword.split())):
+        if i == 0:
+            str_key = keyword.split()[i]
+        else:
+            str_key = str_key + "%20" + keyword.split()[i]
+    return str_key
+
+
+# this block of code helps us to get the ID for the keyword entered
+def get_id_pathcommons(keyword):
+  #print(f'https://reactome.org/ReactomeRESTfulAPI/RESTfulWS/biopaxExporter/Level3/{Id}')
+    # res = requests.get('http://www.pathwaycommons.org/pc2/search.json?q='+keyword+'&datasource=reactome')
+    res = requests.get('http://www.pathwaycommons.org/pc2/search.json?q='+parse_keyword(keyword)+'&datasource=reactome')
+    # print(res.text)
+    if res.ok:
+        return res.text
+        # this returns a long python string that is in JSON format
+    else:
+        print(res.ok)
+        return None
+
+id_info_text = get_id_pathcommons(keyword)
+
+for i in range(len(json.loads(id_info_text)["searchHit"])):
+    if keyword in str(json.loads(id_info_text)["searchHit"][i]['name']):
+        print(str(json.loads(id_info_text)["searchHit"][i]['name']))
+        id_url = json.loads(id_info_text)["searchHit"][i]['uri']
+        break
+    else:
+        print("cannot find")
+num = ""
+for c in id_url:
+    if c.isdigit():
+        num = num + c
+id = int(num)
+
+
+
 ##### Query Reactome API -> return Reaction ID# from Keyword #####
 
 id = 1640170
