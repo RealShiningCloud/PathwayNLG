@@ -15,3 +15,6 @@ keyword = "Glycolysis"
 keyword = "Citric acid cycle (TCA cycle)"  
 keyword = "Signaling by Insulin receptor"  
 keyword = "Cell Cycle"
+
+
+![alt text](https://github.com/RealShiningCloud/PathwayNLG/blob/main/PathwayNLG_demo.png)
