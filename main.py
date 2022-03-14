@@ -513,7 +513,9 @@ def generate_df(model):
 ##### Natural Language Generation #####
 
 def gen_sentence_list(entity_list):
-    if len(entity_list) == 1:
+    if len(entity_list) == 0:
+        gen_str= ''
+    elif len(entity_list) == 1:
         gen_str = entity_list[0]
     elif len(entity_list) > 2:
         gen_str = entity_list[0]
@@ -521,7 +523,7 @@ def gen_sentence_list(entity_list):
             gen_str = gen_str + ", " + ent
         gen_str = gen_str + ", and " + entity_list[-1]
     else:
-        gen_str = entity_list[0]+ " and " + entity_list[-1]
+        gen_str = entity_list[0] + " and " + entity_list[-1]
     return gen_str
 
 
@@ -563,8 +565,8 @@ def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, p
         reac_proc_part1.addPreModifier("the entities")
         reac_proc_part1.addPostModifier("in its initial state")
         reac_proc_part2 = nlgFactory.createNounPhrase(gen_sentence_list(product_list))
-        reac_proc_part2.addPostModifier("the entities")
-        reac_proc_part2.addComplement("in its secondary state")
+        reac_proc_part2.addPreModifier("the entities")
+        reac_proc_part2.addPostModifier("in its secondary state")
 
     reaction_type_noun.addPostModifier("that")
     sub_place_in = ["happens in", "takes place in", "occurs in"]
@@ -576,6 +578,8 @@ def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, p
         cellloc_noun = nlgFactory.createNounPhrase(cell_loc[0])
         cellloc_clause.setVerb(cellloc_verb)
         cellloc_clause.setObject(cellloc_noun)
+
+        # cellloc_clause
         reaction_type_noun.addModifier(cellloc_clause)
         sentence1.setSubject(sentence1_noun)
         sentence1.setObject(reaction_type_noun)
@@ -611,8 +615,23 @@ def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, p
         sentence1.setVerb("is")
         para = para + '\n' + realiser.realiseSentence(sentence1)
 
+    if len(buzzwords) != 0:
+        buzz_sen = nlgFactory.createClause()
+        if reaction_type == "metabolic":
+            buzz_sen_noun = nlgFactory.createNounPhrase(gen_sentence_list(buzzwords))
+        elif reaction_type == 'transport':
+            buzz_sen_noun = nlgFactory.createNounPhrase(gen_sentence_list(buzzwords))
+        else:
+            buzz_sen_noun = nlgFactory.createNounPhrase(gen_sentence_list(buzzwords))
+        buzz_sen_verb = nlgFactory.createVerbPhrase("involves")
+        buzz_sen.setSubject("It ")
+        buzz_sen.setVerb(buzz_sen_verb)
+        buzz_sen.setObject(buzz_sen_noun)
+
+        para = para + ' ' + realiser.realiseSentence(buzz_sen)
+
     if len(enzyme) == 0:
-        last_sentence = "It's not catalyzed by any enzyme."
+        last_sentence = "It's not facilitated by any entity."
         para = para + ' ' + last_sentence
     else:
         last_sentence = nlgFactory.createClause()
@@ -627,7 +646,6 @@ def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, p
         enzyme_name = nlgFactory.createNounPhrase("enzyme")
 
         last_sentence.setSubject(last_sen_noun)
-        last_sentence.setObject(last_sen_noun)
         last_sentence.setVerb(last_sen_verb)
         last_sentence.setObject(last_sen_noun_2)
         if reaction_type == "metabolic":
