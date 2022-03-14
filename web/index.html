@@ -44,7 +44,7 @@
                     <div class="input-group mb-3">
                       <input type="text" class="form-control" id = "searchTerm" placeholder="Type your search term and click Go!" aria-label="Pathway Name" aria-describedby="basic-addon2">
                       <div class="input-group-append">
-                        <button class="btn btn-outline-primary" type="button" onclick = "send_query()">Go!</button>
+                        <button class="btn btn-outline-primary" type="button" onclick = "send_keyword()">Go!</button>
                       </div>
                     </div>
                   </div>
@@ -72,22 +72,43 @@
 
     <script type="text/javascript">
 
-      reactionTemp = '<div class = "reaction" data-id = "%ID%"><h4 class = "reactionHeader" id = "reactionHeader%ID%" data-id = "%ID%"></h4><p class = "reactionText" data-id = "%ID%">%Description%</p></div>'
+      reactionTemp = '<div class = "reaction" data-id = "%ID%"><h4 class = "reactionHeader" onclick = "send_query(this)" id = "reactionHeader%ID%" data-id = "%ID%"></h4><p class = "reactionText" data-id = "%ID%">%Description%</p></div>'
 
     </script>
     <script type="text/javascript">
+      var step = 0
 
-      function send_query(){
-         $('#pathwayDesc').hide()
+      function send_keyword(){
+        $('#pathwayDesc').hide()
         var searchTerm = $('#searchTerm').val()
         $('#pathwayName').html(":D")
         $('#reactions').html("")
-        eel.generate_text_id(searchTerm)(function (listNames){
+        step = 1
+        eel.extract_id_from_search2(searchTerm)(function (listNames){
           for (var i = 0; i < listNames.length; i++) {
-
-            $('#reactions').html($('#reactions').html() + reactionTemp.replaceAll("%ID%", i).replaceAll("%Description%", listNames[i]))
+            $('#reactions').html($('#reactions').html() + reactionTemp.replaceAll("%ID%", i).replaceAll("%Description%", ""))
+            $('#reactionHeader'+i).html(listNames[i])
+            $('#pathwayName').html("Zzz...")
           }
         })
+      }
+      function send_query(me){
+        if (step  == 1) {
+          $('#pathwayDesc').hide()
+          $('#searchTerm').val($(me).html())
+          var searchTerm = $('#searchTerm').val()
+          $('#pathwayName').html(":D")
+          $('#reactions').html("")
+          eel.generate_text_id(searchTerm)(function (listNames) {
+            for (var i = 0; i < listNames.length; i++) {
+
+              $('#reactions').html($('#reactions').html() + reactionTemp.replaceAll("%ID%", i).replaceAll("%Description%", listNames[i]))
+
+            }
+            step = 0
+          })
+
+        }
 
         eel.get_reaction_names()(function (listNames){
           for (var i = 0; i < listNames.length; i++) {
