@@ -350,165 +350,125 @@ def create_introduction(pathwayName, pathwayDescrip):
     return title
 
 
-def gen_sentence_list(entity_list):
-    if len(entity_list) == 1:
-        gen_str = entity_list[0]
-    elif len(entity_list) > 2:
-        gen_str = entity_list[0]
-        for ent in entity_list[1:-1]:
-            gen_str = gen_str + ", " + ent
-        gen_str = gen_str + ", and " + entity_list[-1]
+def gen_sentence_list(reactant_list):
+    if len(reactant_list) == 1:
+        reactant_type = str(type(reactant_list[0])).split('.')[3][:-2]
+        gen_str = reactant_type + ' ' + reactant_list[0].display_name
+    elif len(reactant_list) > 2:
+        gen_str = str(type(reactant_list[0])).split('.')[3][:-2] + ' ' + reactant_list[0].display_name
+        for r in reactant_list[1:-1]:
+            gen_str = gen_str + ", " + str(type(r)).split('.')[3][:-2] + ' ' + r.display_name
+        gen_str = gen_str + ", and " + str(type(reactant_list[-1])).split('.')[3][:-2] + ' ' + reactant_list[
+            -1].display_name
     else:
-        gen_str = entity_list[0] + " and " + entity_list[-1]
+        gen_str = str(type(reactant_list[0])).split('.')[3][:-2] + ' ' + reactant_list[0].display_name
+        gen_str = gen_str + " and " + str(type(reactant_list[1])).split('.')[3][:-2] + ' ' + reactant_list[
+            -1].display_name
+
     return gen_str
 
 
-def create_descriptions(reaction_name, reaction_type, cellular_loc, reactant_list, product_list, enzyme_name):
+def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, product_list, enzyme):
+    para = "Name: " + reaction_name
+
+    # sentence 1
+    sentence1 = nlgFactory.createClause()
+    sentence1_noun = nlgFactory.createNounPhrase("This")
+
     if reaction_type == "metabolic":
-        # sentence 1
-        # noun_phrase_1 = nlgFactory.createNounPhrase(reaction_name)
-        noun_phrase_1 = nlgFactory.createNounPhrase("This")
-        noun_phrase_f1 = nlgFactory.createNounPhrase("a reaction")
-        if len(cellular_loc) != 0:
-            post_modifier = "that takes place in the " + cellular_loc[0]
-            noun_phrase_f1.addPostModifier(post_modifier)
-
-        sentence1 = nlgFactory.createClause()
-        sentence1.setSubject(noun_phrase_1)
-        sentence1.setObject(noun_phrase_f1)
-        sentence1.setVerb("is")
-
-        # sentence 2
-        noun_phrase_f2 = nlgFactory.createNounPhrase("It")
-        noun_phrase_f3 = nlgFactory.createNounPhrase("the reactants")
-        post_modifier = gen_sentence_list(reactant_list) + ", and the products " + gen_sentence_list(product_list)
-        noun_phrase_f3.addPostModifier(post_modifier)
-
-        sentence2 = nlgFactory.createClause()
-        sentence2.setSubject(noun_phrase_f2)
-        sentence2.setObject(noun_phrase_f3)
-        sentence2.setVerb("has")
-
-        if len(enzyme_name) != 0:
-            noun_phrase_f4 = nlgFactory.createNounPhrase("This reaction ")
-            noun_phrase_f5 = nlgFactory.createNounPhrase("facilitated by the enzyme")
-            # noun_phrase.addPreModifier(reaction_name)
-            post_modifier = enzyme_name[0]
-            noun_phrase_f5.addPostModifier(post_modifier)
-
-            sentence3 = nlgFactory.createClause()
-            sentence3.setSubject(noun_phrase_f4)
-            sentence3.setObject(noun_phrase_f5)
-            sentence3.setVerb("is")
-
-            para ='\n' + realiser.realiseSentence(
-                sentence1) + ' ' + realiser.realiseSentence(sentence2) + ' ' + realiser.realiseSentence(sentence3)
-        else:
-            sentence3 = "It's not catalyzed by any enzyme."
-            para ='\n' + realiser.realiseSentence(
-                sentence1) + ' ' + realiser.realiseSentence(sentence2) + ' ' + sentence3
-
+        reaction_type_noun = nlgFactory.createNounPhrase("a reaction")
+        reac_procduct_verb = nlgFactory.createVerbPhrase("has")
+        reac_proc_part1 = nlgFactory.createNounPhrase("the reactants")
+        reac_proc_part1.addPostModifier(gen_react_list(reactants_list))
+        reac_proc_part2 = nlgFactory.createNounPhrase("the products")
+        reac_proc_part2.addPostModifier(gen_react_list(products_list))
     elif reaction_type == "transport":
-        # sentence 1
-        # noun_phrase_1 = nlgFactory.createNounPhrase(reaction_name)
-        noun_phrase_1 = nlgFactory.createNounPhrase("This")
-        noun_phrase_f1 = nlgFactory.createNounPhrase("a transport event")
-        if len(cellular_loc) != 0:
-            post_modifier = "that takes place in the " + cellular_loc[0]
-            noun_phrase_f1.addPostModifier(post_modifier)
-
-        sentence1 = nlgFactory.createClause()
-        sentence1.setSubject(noun_phrase_1)
-        sentence1.setObject(noun_phrase_f1)
-        sentence1.setVerb("is")
-
-        # sentence 2
-        noun_phrase_f2 = nlgFactory.createNounPhrase("It")
-        noun_phrase_f3 = nlgFactory.createNounPhrase("the transport of")
+        reaction_type_noun = nlgFactory.createNounPhrase("a transport event")
+        reac_procduct_verb = nlgFactory.createVerbPhrase("involves")
+        reac_proc_part1 = nlgFactory.createNounPhrase("the transport of")
         if reactant_list == product_list:
-            post_modifier = gen_sentence_list(reactant_list)
+            reac_proc_part1.addPostModifier(gen_sentence_list(reactant_list))
         else:
-            post_modifier = gen_sentence_list(reactant_list) + ", and also " + gen_sentence_list(product_list)
-        noun_phrase_f3.addPostModifier(post_modifier)
-
-        sentence2 = nlgFactory.createClause()
-        sentence2.setSubject(noun_phrase_f2)
-        sentence2.setObject(noun_phrase_f3)
-        sentence2.setVerb("involves")
-
-        if len(enzyme_name) != 0:
-            noun_phrase_f4 = nlgFactory.createNounPhrase("This transport event ")
-            noun_phrase_f5 = nlgFactory.createNounPhrase("facilitated by")
-            # noun_phrase.addPreModifier(reaction_name)
-            post_modifier = enzyme_name[0]
-            noun_phrase_f5.addPostModifier(post_modifier)
-
-            sentence3 = nlgFactory.createClause()
-            sentence3.setSubject(noun_phrase_f4)
-            sentence3.setObject(noun_phrase_f5)
-            sentence3.setVerb("is")
-
-            para ='\n' + realiser.realiseSentence(
-                sentence1) + ' ' + realiser.realiseSentence(sentence2) + ' ' + realiser.realiseSentence(sentence3)
-        else:
-            para ='\n' + realiser.realiseSentence(
-                sentence1) + ' ' + realiser.realiseSentence(sentence2)
-
+            reac_proc_part1.addPostModifier(
+                gen_sentence_list(reactant_list) + ", and also " + gen_sentence_list(product_list))
     else:
-        # sentence 1
-        # noun_phrase_1 = nlgFactory.createNounPhrase(reaction_name)
-        noun_phrase_1 = nlgFactory.createNounPhrase("This")
-        noun_phrase_f1 = nlgFactory.createNounPhrase("an event")
-        if len(cellular_loc) != 0:
-            post_modifier = "that takes place in the " + cellular_loc[0]
-            noun_phrase_f1.addPostModifier(post_modifier)
+        reaction_type_noun = nlgFactory.createNounPhrase("an event")
+        reac_procduct_verb = nlgFactory.createVerbPhrase("involves")
+        reac_proc_part1 = nlgFactory.createNounPhrase(gen_react_list(reactants_list))
+        reac_proc_part1.addPreModifier("the entities")
+        reac_proc_part1.addPostModifier("in its initial state")
+        reac_proc_part2 = nlgFactory.createNounPhrase(gen_react_list(products_list))
+        reac_proc_part2.addPostModifier("the entities")
+        reac_proc_part2.addComplement("in its secondary state")
 
-        sentence1 = nlgFactory.createClause()
-        sentence1.setSubject(noun_phrase_1)
-        sentence1.setObject(noun_phrase_f1)
+    reaction_type_noun.addPostModifier("that")
+    cellloc_verb = nlgFactory.createVerbPhrase("takes")
+    cellloc_verb.addPostModifier('place in')
+
+    if len(cell_loc) != 0:
+        cellloc_clause = nlgFactory.createClause()
+        cellloc_noun = nlgFactory.createNounPhrase(cell_loc[0])
+        cellloc_clause.setVerb(cellloc_verb)
+        cellloc_clause.setObject(cellloc_noun)
+        reaction_type_noun.addModifier(cellloc_clause)
+        sentence1.setSubject(sentence1_noun)
+        sentence1.setObject(reaction_type_noun)
         sentence1.setVerb("is")
+        para = para + '\n' + realiser.realiseSentence(sentence1)
 
-        # sentence 2
-        noun_phrase_f2 = nlgFactory.createNounPhrase("Its initial state")
-        noun_phrase_f3 = nlgFactory.createNounPhrase("the entities")
-        post_modifier = gen_sentence_list(reactant_list)
-        noun_phrase_f3.addPostModifier(post_modifier)
+        # second sentence
+        reac_procduct_sentence = nlgFactory.createClause()
 
-        sentence2 = nlgFactory.createClause()
-        sentence2.setSubject(noun_phrase_f2)
-        sentence2.setObject(noun_phrase_f3)
-        sentence2.setVerb("involves")
-
-        # sentence 3
-        noun_phrase_f4 = nlgFactory.createNounPhrase("Its secondary state")
-        noun_phrase_f5 = nlgFactory.createNounPhrase("the entities")
-        post_modifier = gen_sentence_list(product_list)
-        noun_phrase_f5.addPostModifier(post_modifier)
-
-        sentence3 = nlgFactory.createClause()
-        sentence3.setSubject(noun_phrase_f4)
-        sentence3.setObject(noun_phrase_f5)
-        sentence3.setVerb("involves")
-
-        if len(enzyme_name) != 0:
-            noun_phrase_f6 = nlgFactory.createNounPhrase("This event ")
-            noun_phrase_f7 = nlgFactory.createNounPhrase("facilitated by")
-            # noun_phrase.addPreModifier(reaction_name)
-            post_modifier = enzyme_name[0]
-            noun_phrase_f7.addPostModifier(post_modifier)
-
-            sentence4 = nlgFactory.createClause()
-            sentence4.setSubject(noun_phrase_f6)
-            sentence4.setObject(noun_phrase_f7)
-            sentence4.setVerb("is")
-
-            para = realiser.realiseSentence(
-                sentence1) + ' ' + realiser.realiseSentence(sentence2) + ' ' + realiser.realiseSentence(
-                sentence3) + ' ' + realiser.realiseSentence(sentence4)
+        if reaction_type == "transport":
+            obj_part = reac_proc_part1
         else:
-            para =realiser.realiseSentence(
-                sentence1) + ' ' + realiser.realiseSentence(sentence2) + ' ' + realiser.realiseSentence(sentence3)
+            obj_part = nlgFactory.createCoordinatedPhrase(reac_proc_part1, reac_proc_part2)
 
+        reac_procduct_sentence.setObject(obj_part)
+        reac_procduct_sentence.setSubject('It')
+        reac_procduct_sentence.setVerb(reac_procduct_verb)
+        para = para + ' ' + realiser.realiseSentence(reac_procduct_sentence)
+
+    elif len(cell_loc) == 0:
+        reac_procduct_clause = nlgFactory.createClause()
+
+        if reaction_type == "transport":
+            obj_part = reac_proc_part1
+        else:
+            obj_part = nlgFactory.createCoordinatedPhrase(reac_proc_part1, reac_proc_part2)
+        reac_procduct_clause.setObject(obj_part)
+
+        reac_procduct_clause.setVerb(reac_procduct_verb)
+        reaction_type_noun.addModifier(reac_procduct_clause)
+        sentence1.setSubject(sentence1_noun)
+        sentence1.setObject(reaction_type_noun)
+        sentence1.setVerb("is")
+        para = para + '\n' + realiser.realiseSentence(sentence1)
+
+    if len(enzyme) == 0:
+        print('here')
+        last_sentence = "It's not catalyzed by any enzyme."
+        para = para + ' ' + last_sentence
+    else:
+        last_sentence = nlgFactory.createClause()
+        if reaction_type == "metabolic":
+            last_sen_noun = nlgFactory.createNounPhrase("This reaction")
+        elif reaction_type == 'transport':
+            last_sen_noun = nlgFactory.createNounPhrase("This transport event")
+        else:
+            last_sen_noun = nlgFactory.createNounPhrase("This event")
+        last_sen_verb = nlgFactory.createVerbPhrase("is facilitated by")
+        last_sen_noun_2 = nlgFactory.createNounPhrase(enzyme[0])
+        enzyme_name = nlgFactory.createNounPhrase("enzyme")
+
+        last_sentence.setSubject(last_sen_noun)
+        last_sentence.setObject(last_sen_noun)
+        last_sentence.setVerb(last_sen_verb)
+        last_sentence.setObject(last_sen_noun_2)
+        if reaction_type == "metabolic":
+            last_sentence.setIndirectObject(enzyme_name)
+
+        para = para + ' ' + realiser.realiseSentence(last_sentence)
     return para
 
 
