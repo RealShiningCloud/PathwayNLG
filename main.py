@@ -74,20 +74,21 @@ def get_id_pathcommons(keyword):
         print(res.ok)
         return None
 
-id_info_text = get_id_pathcommons(keyword)
 
-for i in range(len(json.loads(id_info_text)["searchHit"])):
-    if keyword in str(json.loads(id_info_text)["searchHit"][i]['name']):
-        print(str(json.loads(id_info_text)["searchHit"][i]['name']))
-        id_url = json.loads(id_info_text)["searchHit"][i]['uri']
-        break
-    else:
-        print("cannot find")
-num = ""
-for c in id_url:
-    if c.isdigit():
-        num = num + c
-id = int(num)
+def extract_id_from_search(id_info_text, keyword):
+    for i in range(len(json.loads(id_info_text)["searchHit"])):
+        if keyword in str(json.loads(id_info_text)["searchHit"][i]['name']):
+            print(str(json.loads(id_info_text)["searchHit"][i]['name']))
+            id_url = json.loads(id_info_text)["searchHit"][i]['uri']
+            break
+        else:
+            print("cannot find")
+    num = ""
+    for c in id_url:
+        if c.isdigit():
+            num = num + c
+    id = int(num)
+    return id
 
 
 
@@ -101,6 +102,8 @@ id = 1640170
 def generate_text_id(id):
     print(f"working on query with id {id}")
     pathway_dict = {}
+    search = get_id_pathcommons(id)
+    id = extract_id_from_search(search, id)
     reactome = get_reactome(id)
     if reactome == None:
         print("ID not found.")
@@ -396,21 +399,16 @@ def create_introduction(pathwayName, pathwayDescrip):
     return title
 
 
-def gen_sentence_list(reactant_list):
-    if len(reactant_list) == 1:
-        reactant_type = str(type(reactant_list[0])).split('.')[3][:-2]
-        gen_str = reactant_type + ' ' + reactant_list[0].display_name
-    elif len(reactant_list) > 2:
-        gen_str = str(type(reactant_list[0])).split('.')[3][:-2] + ' ' + reactant_list[0].display_name
-        for r in reactant_list[1:-1]:
-            gen_str = gen_str + ", " + str(type(r)).split('.')[3][:-2] + ' ' + r.display_name
-        gen_str = gen_str + ", and " + str(type(reactant_list[-1])).split('.')[3][:-2] + ' ' + reactant_list[
-            -1].display_name
+def gen_sentence_list(entity_list):
+    if len(entity_list) == 1:
+        gen_str = entity_list[0]
+    elif len(entity_list) > 2:
+        gen_str = entity_list[0]
+        for ent in entity_list[1:-1]:
+            gen_str = gen_str + ", " + ent
+        gen_str = gen_str + ", and " + entity_list[-1]
     else:
-        gen_str = str(type(reactant_list[0])).split('.')[3][:-2] + ' ' + reactant_list[0].display_name
-        gen_str = gen_str + " and " + str(type(reactant_list[1])).split('.')[3][:-2] + ' ' + reactant_list[
-            -1].display_name
-
+        gen_str = entity_list[0]+ " and " + entity_list[-1]
     return gen_str
 
 
@@ -425,9 +423,9 @@ def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, p
         reaction_type_noun = nlgFactory.createNounPhrase("a reaction")
         reac_procduct_verb = nlgFactory.createVerbPhrase("has")
         reac_proc_part1 = nlgFactory.createNounPhrase("the reactants")
-        reac_proc_part1.addPostModifier(gen_react_list(reactants_list))
+        reac_proc_part1.addPostModifier(gen_sentence_list(reactant_list))
         reac_proc_part2 = nlgFactory.createNounPhrase("the products")
-        reac_proc_part2.addPostModifier(gen_react_list(products_list))
+        reac_proc_part2.addPostModifier(gen_sentence_list(product_list))
     elif reaction_type == "transport":
         reaction_type_noun = nlgFactory.createNounPhrase("a transport event")
         reac_procduct_verb = nlgFactory.createVerbPhrase("involves")
@@ -440,10 +438,10 @@ def create_descriptions(reaction_name, reaction_type, cell_loc, reactant_list, p
     else:
         reaction_type_noun = nlgFactory.createNounPhrase("an event")
         reac_procduct_verb = nlgFactory.createVerbPhrase("involves")
-        reac_proc_part1 = nlgFactory.createNounPhrase(gen_react_list(reactants_list))
+        reac_proc_part1 = nlgFactory.createNounPhrase(gen_sentence_list(reactant_list))
         reac_proc_part1.addPreModifier("the entities")
         reac_proc_part1.addPostModifier("in its initial state")
-        reac_proc_part2 = nlgFactory.createNounPhrase(gen_react_list(products_list))
+        reac_proc_part2 = nlgFactory.createNounPhrase(gen_sentence_list(product_list))
         reac_proc_part2.addPostModifier("the entities")
         reac_proc_part2.addComplement("in its secondary state")
 
